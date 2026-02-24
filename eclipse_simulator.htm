@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日食、月食模擬器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        input[type=range] { width: 100%; }
+        .control-group { margin-bottom: 0.5rem; }
+        .control-label { display: flex; justify-content: space-between; font-size: 1.2rem; color: #4b5563; font-weight: 500; }
+        .val-display { color: #2563eb; font-weight: bold; }
+        /* 自訂滾動條 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    </style>
+</head>
+<body class="bg-white flex flex-col h-screen">
+
+    <div class="w-full bg-slate-50 border-b border-slate-200 p-4 shadow-sm z-10 flex flex-col md:flex-row gap-6 overflow-y-auto max-h-[45vh]">
+        
+        <div class="w-full md:w-1/5 flex flex-col justify-center">
+            <div class="flex items-center gap-2 mb-2">
+                <button id="langBtn" onclick="toggleLanguage()" class="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded border border-slate-300 transition-all shrink-0">EN</button>
+                <h1 id="mainTitle" class="text-xl font-bold text-slate-800">日食、月食模擬器</h1>
+            </div>
+            <div class="text-sm text-slate-600 space-y-2 leading-relaxed">
+                <p id="guideTitle" class="font-semibold text-slate-700">請觀察錐形本影：</p>
+                <ul class="list-disc ml-4 space-y-1">
+                    <li id="guide_1"><span class="text-blue-600 font-medium">日食：</span>定位至「新月」，觀察月球影錐尖端是否觸及地表。</li>
+                    <li id="guide_2"><span class="text-orange-600 font-medium">月食：</span>定位至「滿月」，觀察月球是否進入地球影錐。</li>
+                    <li id="guide_3"><span class="text-slate-800 font-medium">軌道傾角(i)：</span>調整此值可解釋為何朔望月不一定發生食相。</li>
+                    <li id="guide_4"><span class="text-slate-800 font-medium">離心率(e)：</span>調整此值觀察「全食」與「環食」的差異。</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="w-full md:w-2/5 bg-white p-4 rounded-lg shadow-sm border border-blue-100 flex-1">
+            <h2 id="sunEarthHeader" class="text-xl font-bold text-blue-700 mb-2 flex items-center">
+                <div class="w-2 h-2 rounded-full bg-blue-500 mr-2"></div> 太陽與地球參數
+            </h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                <div class="control-group">
+                    <div class="control-label"><span id="label_s_r">太陽半徑</span> <span id="s_r_val" class="val-display">25</span></div>
+                    <input type="range" id="s_r" min="10" max="60" step="1" value="25">
+                </div>
+                <div class="control-group">
+                    <div class="control-label"><span id="label_e_r">地球半徑</span> <span id="e_r_val" class="val-display">8</span></div>
+                    <input type="range" id="e_r" min="2" max="15" step="0.5" value="8">
+                </div>
+                <div class="control-group">
+                    <div class="control-label"><span id="label_e_e">地球離心率 (e)</span> <span id="e_e_val" class="val-display">0</span></div>
+                    <input type="range" id="e_e" min="0" max="0.5" step="0.01" value="0">
+                </div>
+                <div class="control-group">
+                    <div class="control-label"><span id="label_e_a">日地距離 (a)</span> <span id="e_a_val" class="val-display">150</span></div>
+                    <input type="range" id="e_a" min="80" max="250" step="1" value="150">
+                </div>
+                <div class="control-group sm:col-span-2">
+                    <div class="control-label"><span id="label_e_speed">地球公轉速度</span> <span id="e_speed_val" class="val-display">0</span></div>
+                    <input type="range" id="e_speed" min="0" max="0.05" step="0.0001" value="0">
+                </div>
+
+                <div class="control-group sm:col-span-2 mt-1">
+                        <div class="flex gap-2">
+                            <button id="btnPerspective" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-base text-white font-black rounded shadow-lg transition-all ring-offset-2 ring-blue-400">透視視角</button>
+                            <button id="btnOrthographic" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-base text-white font-black rounded shadow-lg transition-all ring-offset-2 ring-emerald-400 opacity-60">正交視角</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-full md:w-3.5/10 bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex-1">
+            <h2 id="moonHeader" class="text-xl font-bold text-gray-700 mb-2 flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="w-2 h-2 rounded-full bg-gray-500 mr-2"></div> 月球參數
+                </div>
+            </h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                <div class="control-group">
+                    <div class="control-label"><span id="label_m_r">月球半徑</span> <span id="m_r_val" class="val-display">3.8</span></div>
+                    <input type="range" id="m_r" min="0.5" max="5" step="0.1" value="3.8">
+                </div>
+                <div class="control-group">
+                    <div class="control-label"><span id="label_m_a">地月距離 (a)</span> <span id="m_a_val" class="val-display">18</span></div>
+                    <input type="range" id="m_a" min="10" max="80" step="1" value="30">
+                </div>
+                <div class="control-group">
+                    <div class="control-label"><span id="label_m_i">軌道傾角 (i)</span> <span id="m_i_val" class="val-display">30°</span></div>
+                    <input type="range" id="m_i" min="0" max="90" step="0.1" value="30">
+                </div>
+                <div class="control-group">
+                    <div class="control-label"><span id="label_m_e">月球離心率 (e)</span> <span id="m_e_val" class="val-display">0</span></div>
+                    <input type="range" id="m_e" min="0" max="0.5" step="0.005" value="0">
+                </div>
+                <div class="control-group sm:col-span-2">
+                    <div class="control-label"><span id="label_m_speed">月球公轉速度</span> <span id="m_speed_val" class="val-display">0</span></div>
+                    <input type="range" id="m_speed" min="0" max="0.05" step="0.001" value="0.0">
+                </div>
+                <div class="control-group sm:col-span-2 mt-1">
+                    <div class="flex flex-col gap-2">
+                        <div class="flex gap-2">
+                            <button id="btnNewMoon" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-base text-white font-bold rounded shadow transition-colors">月球位置：新月</button>
+                            <button id="btnFullMoon" class="flex-1 py-2 bg-orange-600 hover:bg-orange-700 text-base text-white font-bold rounded shadow transition-colors">月球位置：滿月</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-container" class="flex-1 w-full relative"></div>
+
+    <script>
+        // --- 語言切換邏輯 ---
+        let currentLang = 'zh';
+        const translations = {
+            zh: {
+                langBtn: "EN",
+                mainTitle: "日食、月食模擬器",
+                guideTitle: "請觀察錐形本影：",
+                guide_1: '<span class="text-blue-600 font-medium">日食：</span>定位至「新月」，觀察月球影錐尖端是否觸及地表。',
+                guide_2: '<span class="text-orange-600 font-medium">月食：</span>定位至「滿月」，觀察月球是否進入地球影錐。',
+                guide_3: '<span class="text-slate-800 font-medium">軌道傾角(i)：</span>調整此值可解釋為何朔望月不一定發生食相。',
+                guide_4: '<span class="text-slate-800 font-medium">離心率(e)：</span>調整此值觀察「全食」與「環食」的差異。',
+                sunEarthHeader: '<div class="w-2 h-2 rounded-full bg-blue-500 mr-2"></div> 太陽與地球參數',
+                moonHeader: '<div class="flex items-center"><div class="w-2 h-2 rounded-full bg-gray-500 mr-2"></div> 月球參數</div>',
+                label_s_r: "太陽半徑",
+                label_e_r: "地球半徑",
+                label_e_e: "地球離心率 (e)",
+                label_e_a: "日地距離 (a)",
+                label_e_speed: "地球公轉速度",
+                btnPerspective: "透視視角",
+                btnOrthographic: "正交視角",
+                label_m_r: "月球半徑",
+                label_m_a: "地月距離 (a)",
+                label_m_i: "軌道傾角 (i)",
+                label_m_e: "月球離心率 (e)",
+                label_m_speed: "月球公轉速度",
+                btnNewMoon: "月球位置：新月",
+                btnFullMoon: "月球位置：滿月"
+            },
+            en: {
+                langBtn: "中",
+                mainTitle: "Solar and Lunar Eclipse Simulator",
+                guideTitle: "Observe the Umbra Cone:",
+                guide_1: '<span class="text-blue-600 font-medium">Solar:</span> Go to "New Moon", see if the moon\'s umbra touches Earth.',
+                guide_2: '<span class="text-orange-600 font-medium">Lunar:</span> Go to "Full Moon", see if the moon enters Earth\'s umbra.',
+                guide_3: '<span class="text-slate-800 font-medium">Inclination(i):</span> Adjust this to see why eclipses don\'t occur monthly.',
+                guide_4: '<span class="text-slate-800 font-medium">Eccentricity(e):</span> Observe difference between Total and Annular.',
+                sunEarthHeader: '<div class="w-2 h-2 rounded-full bg-blue-500 mr-2"></div> Sun & Earth Parameters',
+                moonHeader: '<div class="flex items-center"><div class="w-2 h-2 rounded-full bg-gray-500 mr-2"></div> Moon Parameters</div>',
+                label_s_r: "Sun Radius",
+                label_e_r: "Earth Radius",
+                label_e_e: "Earth Eccentricity (e)",
+                label_e_a: "Sun-Earth Dist (a)",
+                label_e_speed: "Earth Orbit Speed",
+                btnPerspective: "Perspective",
+                btnOrthographic: "Orthographic",
+                label_m_r: "Moon Radius",
+                label_m_a: "Earth-Moon Dist (a)",
+                label_m_i: "Inclination (i)",
+                label_m_e: "Moon Eccentricity (e)",
+                label_m_speed: "Moon Orbit Speed",
+                btnNewMoon: "Moon: New Moon",
+                btnFullMoon: "Moon: Full Moon"
+            }
+        };
+
+        function toggleLanguage() {
+            currentLang = (currentLang === 'zh') ? 'en' : 'zh';
+            const t = translations[currentLang];
+            document.getElementById('langBtn').innerText = t.langBtn;
+            document.getElementById('mainTitle').innerText = t.mainTitle;
+            document.getElementById('guideTitle').innerText = t.guideTitle;
+            document.getElementById('guide_1').innerHTML = t.guide_1;
+            document.getElementById('guide_2').innerHTML = t.guide_2;
+            document.getElementById('guide_3').innerHTML = t.guide_3;
+            document.getElementById('guide_4').innerHTML = t.guide_4;
+            document.getElementById('sunEarthHeader').innerHTML = t.sunEarthHeader;
+            document.getElementById('moonHeader').innerHTML = t.moonHeader;
+            document.getElementById('label_s_r').innerText = t.label_s_r;
+            document.getElementById('label_e_r').innerText = t.label_e_r;
+            document.getElementById('label_e_e').innerText = t.label_e_e;
+            document.getElementById('label_e_a').innerText = t.label_e_a;
+            document.getElementById('label_e_speed').innerText = t.label_e_speed;
+            document.getElementById('btnPerspective').innerText = t.btnPerspective;
+            document.getElementById('btnOrthographic').innerText = t.btnOrthographic;
+            document.getElementById('label_m_r').innerText = t.label_m_r;
+            document.getElementById('label_m_a').innerText = t.label_m_a;
+            document.getElementById('label_m_i').innerText = t.label_m_i;
+            document.getElementById('label_m_e').innerText = t.label_m_e;
+            document.getElementById('label_m_speed').innerText = t.label_m_speed;
+            document.getElementById('btnNewMoon').innerText = t.btnNewMoon;
+            document.getElementById('btnFullMoon').innerText = t.btnFullMoon;
+        }
+
+        // --- 以下維持原始 3D JavaScript 邏輯 ---
+        const sunParams = { r: 25 };
+        const earthParams = { a: 100, e: 0, i: 0, M: 0, speed: 0, r: 8 };
+        const moonParams = { a: 18, e: 0, i: 30, M: 0, speed: 0, r: 3.8 };
+
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeeeeee); 
+
+        const gridHelper = new THREE.GridHelper(600, 30, 0xdddddd, 0xdddddd); 
+        scene.add(gridHelper);
+
+        let camera, controls;
+        const aspect = container.clientWidth / container.clientHeight;
+        const frustumSize = 500;
+
+        const perspectiveCamera = new THREE.PerspectiveCamera(45, aspect, 0.1, 5000);
+        perspectiveCamera.position.set(-3.9, 100, 200);
+
+        const orthographicCamera = new THREE.OrthographicCamera(
+            frustumSize * aspect / -2, frustumSize * aspect / 2, 
+            frustumSize / 2, frustumSize / -2, 
+            0.1, 5000
+        );
+        orthographicCamera.position.set(330, 130, 740);
+        camera = perspectiveCamera;
+        orthographicCamera.zoom = 3.8; 
+        orthographicCamera.updateProjectionMatrix(); 
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        function initControls() {
+            if (controls) controls.dispose();
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+        }
+        initControls();
+
+        const btnPersp = document.getElementById('btnPerspective');
+        const btnOrtho = document.getElementById('btnOrthographic');
+
+        function updateCameraUI(type) {
+            if(type === 'p') {
+                btnPersp.classList.remove('opacity-60');
+                btnPersp.classList.add('ring-2');
+                btnOrtho.classList.add('opacity-60');
+                btnOrtho.classList.remove('ring-2');
+            } else {
+                btnOrtho.classList.remove('opacity-60');
+                btnOrtho.classList.add('ring-2');
+                btnPersp.classList.add('opacity-60');
+                btnPersp.classList.remove('ring-2');
+            }
+        }
+
+        btnPersp.onclick = () => { camera = perspectiveCamera; updateCameraUI('p'); initControls(); };
+        btnOrtho.onclick = () => { camera = orthographicCamera; updateCameraUI('o'); initControls(); };
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.15));
+        const sunLight = new THREE.PointLight(0xffffff, 2.5, 3000); 
+        scene.add(sunLight);
+
+        const sunMesh = new THREE.Mesh(
+            new THREE.SphereGeometry(sunParams.r, 32, 32), 
+            new THREE.MeshBasicMaterial({ color: 0xffaa00 })
+        );
+        scene.add(sunMesh);
+
+        const earthMesh = new THREE.Mesh(
+            new THREE.SphereGeometry(earthParams.r, 32, 32), 
+            new THREE.MeshToonMaterial({ color: 0x2266ff })
+        );
+        scene.add(earthMesh);
+
+        const moonMesh = new THREE.Mesh(
+            new THREE.SphereGeometry(moonParams.r, 32, 32), 
+            new THREE.MeshToonMaterial({ color: 0xcccccc })
+        );
+        scene.add(moonMesh);
+
+        function createUmbraMesh(color, opacity) {
+            const geo = new THREE.ConeGeometry(1, 1, 64, 1, true);
+            geo.rotateX(Math.PI / 2);
+            geo.translate(0, 0, 0.5); 
+            const mat = new THREE.MeshBasicMaterial({
+                color: color, transparent: true, opacity: opacity, side: THREE.DoubleSide, depthWrite: false
+            });
+            return new THREE.Mesh(geo, mat);
+        }
+
+        const earthUmbra = createUmbraMesh(0x000000, 0.15);
+        const moonUmbra = createUmbraMesh(0x333333, 0.25);
+        scene.add(earthUmbra);
+        scene.add(moonUmbra);
+
+        const earthOrbitLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x3366cc, transparent: true, opacity: 0.8 }));
+        scene.add(earthOrbitLine);
+        const moonOrbitLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x666666, transparent: true, opacity: 0.8 }));
+        scene.add(moonOrbitLine);
+
+        function getOrbitalPosition(params, M_angle) {
+            let M = M_angle;
+            let E = M;
+            for(let j=0; j<8; j++) {
+                E = E - (E - params.e * Math.sin(E) - M) / (1 - params.e * Math.cos(E));
+            }
+            const x_orb = params.a * (Math.cos(E) - params.e);
+            const z_orb = -params.a * Math.sqrt(1 - params.e * params.e) * Math.sin(E);
+            const vec = new THREE.Vector3(x_orb, 0, z_orb);
+            vec.applyAxisAngle(new THREE.Vector3(1,0,0), THREE.MathUtils.degToRad(params.i));
+            return vec;
+        }
+
+        function updateOrbitPath(params, lineMesh, centerPos = new THREE.Vector3(0,0,0)) {
+            const points = [];
+            for (let i = 0; i <= 128; i++) {
+                points.push(getOrbitalPosition(params, (i / 128) * Math.PI * 2).add(centerPos));
+            }
+            lineMesh.geometry.setFromPoints(points);
+        }
+
+        function updateUmbraPrecision(umbra, bodyPos, bodyRadius, sourceRadius) {
+            const dist = bodyPos.length();
+            let shadowLength = (bodyRadius * dist) / (sourceRadius - bodyRadius);
+            if (shadowLength <= 0 || isNaN(shadowLength)) shadowLength = 5000;
+            umbra.position.copy(bodyPos);
+            umbra.scale.set(bodyRadius, bodyRadius, shadowLength);
+            const shadowDirection = new THREE.Vector3().copy(bodyPos).multiplyScalar(2);
+            umbra.lookAt(shadowDirection);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            earthParams.M += earthParams.speed;
+            moonParams.M += moonParams.speed;
+            const earthPos = getOrbitalPosition(earthParams, earthParams.M);
+            earthMesh.position.copy(earthPos);
+            updateUmbraPrecision(earthUmbra, earthPos, earthParams.r, sunParams.r);
+            updateOrbitPath(earthParams, earthOrbitLine);
+            const moonRelPos = getOrbitalPosition(moonParams, moonParams.M);
+            const moonPos = new THREE.Vector3().copy(earthPos).add(moonRelPos);
+            moonMesh.position.copy(moonPos);
+            updateUmbraPrecision(moonUmbra, moonPos, moonParams.r, sunParams.r);
+            updateOrbitPath(moonParams, moonOrbitLine, earthPos);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function bindSlider(id, paramObj, key, callback) {
+            const slider = document.getElementById(id);
+            const display = document.getElementById(id + '_val');
+            slider.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                paramObj[key] = val;
+                display.innerText = (key === 'i') ? val + '°' : val.toFixed(3).replace(/\.?0+$/, "");
+                if(callback) callback(val);
+            });
+        }
+
+        bindSlider('s_r', sunParams, 'r', (v) => sunMesh.geometry = new THREE.SphereGeometry(v, 32, 32));
+        bindSlider('e_r', earthParams, 'r', (v) => earthMesh.geometry = new THREE.SphereGeometry(v, 32, 32));
+        bindSlider('m_r', moonParams, 'r', (v) => moonMesh.geometry = new THREE.SphereGeometry(v, 32, 32));
+        bindSlider('e_e', earthParams, 'e');
+        bindSlider('e_a', earthParams, 'a');
+        bindSlider('e_speed', earthParams, 'speed');
+        bindSlider('m_a', moonParams, 'a');
+        bindSlider('m_i', moonParams, 'i');
+        bindSlider('m_e', moonParams, 'e');
+        bindSlider('m_speed', moonParams, 'speed');
+
+        function getMFromTrueAnomaly(e, nu) {
+            const E = 2 * Math.atan(Math.sqrt((1 - e) / (1 + e)) * Math.tan(nu / 2));
+            return E - e * Math.sin(E);
+        }
+        function getOrbitalPlaneAngle(params, M) {
+            let E = M;
+            for(let j=0; j<8; j++) E = E - (E - params.e * Math.sin(E) - M) / (1 - params.e * Math.cos(E));
+            return 2 * Math.atan(Math.sqrt((1 + params.e) / (1 - params.e)) * Math.tan(E / 2));
+        }
+
+        document.getElementById('btnNewMoon').onclick = () => {
+            const earthNu = getOrbitalPlaneAngle(earthParams, earthParams.M);
+            moonParams.M = getMFromTrueAnomaly(moonParams.e, earthNu + Math.PI);
+        };
+        document.getElementById('btnFullMoon').onclick = () => {
+            const earthNu = getOrbitalPlaneAngle(earthParams, earthParams.M);
+            moonParams.M = getMFromTrueAnomaly(moonParams.e, earthNu);
+        };
+
+        window.addEventListener('resize', () => {
+            const w = container.clientWidth, h = container.clientHeight;
+            renderer.setSize(w, h);
+            perspectiveCamera.aspect = w / h;
+            perspectiveCamera.updateProjectionMatrix();
+            orthographicCamera.left = frustumSize * (w/h) / -2;
+            orthographicCamera.right = frustumSize * (w/h) / 2;
+            orthographicCamera.top = frustumSize / 2;
+            orthographicCamera.bottom = frustumSize / -2;
+            orthographicCamera.updateProjectionMatrix();
+        });
+
+        window.onload = animate;
+    </script>
+</body>
+</html>
