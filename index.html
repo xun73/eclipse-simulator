@@ -24,19 +24,25 @@
 
     <div class="w-full bg-slate-50 border-b border-slate-200 p-4 shadow-sm z-10 flex flex-col md:flex-row gap-6 overflow-y-auto max-h-[45vh]">
         
-        <div class="w-full md:w-1/5 flex flex-col justify-center">
-            <div class="flex items-center gap-2 mb-2">
-                <button id="langBtn" onclick="toggleLanguage()" class="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded border border-slate-300 transition-all shrink-0">EN</button>
-                <h1 id="mainTitle" class="text-xl font-bold text-slate-800">日食、月食模擬器</h1>
+        <div class="w-full md:w-1/5 flex flex-col justify-between">
+            <div>
+                <div class="flex items-center gap-2 mb-2">
+                    <button id="langBtn" onclick="toggleLanguage()" class="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded border border-slate-300 transition-all shrink-0">EN</button>
+                    <h1 id="mainTitle" class="text-xl font-bold text-slate-800">日食、月食模擬器</h1>
+                </div>
+                <div class="text-sm text-slate-600 space-y-2 leading-relaxed">
+                    <p id="guideTitle" class="font-semibold text-slate-700">請觀察錐形本影：</p>
+                    <ul class="list-disc ml-4 space-y-1">
+                        <li id="guide_1"><span class="text-blue-600 font-medium">日食：</span>定位至「新月」，觀察月球影錐尖端是否觸及地表。</li>
+                        <li id="guide_2"><span class="text-orange-600 font-medium">月食：</span>定位至「滿月」，觀察月球是否進入地球影錐。</li>
+                        <li id="guide_3"><span class="text-slate-800 font-medium">軌道傾角(i)：</span>調整此值可解釋為何朔望月不一定發生食相。</li>
+                        <li id="guide_4"><span class="text-slate-800 font-medium">離心率(e)：</span>調整此值觀察「全食」與「環食」的差異。</li>
+                    </ul>
+                </div>
             </div>
-            <div class="text-sm text-slate-600 space-y-2 leading-relaxed">
-                <p id="guideTitle" class="font-semibold text-slate-700">請觀察錐形本影：</p>
-                <ul class="list-disc ml-4 space-y-1">
-                    <li id="guide_1"><span class="text-blue-600 font-medium">日食：</span>定位至「新月」，觀察月球影錐尖端是否觸及地表。</li>
-                    <li id="guide_2"><span class="text-orange-600 font-medium">月食：</span>定位至「滿月」，觀察月球是否進入地球影錐。</li>
-                    <li id="guide_3"><span class="text-slate-800 font-medium">軌道傾角(i)：</span>調整此值可解釋為何朔望月不一定發生食相。</li>
-                    <li id="guide_4"><span class="text-slate-800 font-medium">離心率(e)：</span>調整此值觀察「全食」與「環食」的差異。</li>
-                </ul>
+            
+            <div id="copyright" class="mt-4 pt-2 border-t border-slate-200 text-[11px] text-slate-500 italic leading-tight">
+                臺中市立惠文高中地球科學教師吳秉勳製作
             </div>
         </div>
 
@@ -128,6 +134,7 @@
                 guide_2: '<span class="text-orange-600 font-medium">月食：</span>定位至「滿月」，觀察月球是否進入地球影錐。',
                 guide_3: '<span class="text-slate-800 font-medium">軌道傾角(i)：</span>調整此值可解釋為何朔望月不一定發生食相。',
                 guide_4: '<span class="text-slate-800 font-medium">離心率(e)：</span>調整此值觀察「全食」與「環食」的差異。',
+                copyright: "臺中市立惠文高中地球科學教師吳秉勳製作",
                 sunEarthHeader: '<div class="w-2 h-2 rounded-full bg-blue-500 mr-2"></div> 太陽與地球參數',
                 moonHeader: '<div class="flex items-center"><div class="w-2 h-2 rounded-full bg-gray-500 mr-2"></div> 月球參數</div>',
                 label_s_r: "太陽半徑",
@@ -153,6 +160,7 @@
                 guide_2: '<span class="text-orange-600 font-medium">Lunar:</span> Go to "Full Moon", see if the moon enters Earth\'s umbra.',
                 guide_3: '<span class="text-slate-800 font-medium">Inclination(i):</span> Adjust this to see why eclipses don\'t occur monthly.',
                 guide_4: '<span class="text-slate-800 font-medium">Eccentricity(e):</span> Observe difference between Total and Annular.',
+                copyright: "Made by Bing-Syun Wu, Earth Science Teacher, Hui-Wen Senior High School",
                 sunEarthHeader: '<div class="w-2 h-2 rounded-full bg-blue-500 mr-2"></div> Sun & Earth Parameters',
                 moonHeader: '<div class="flex items-center"><div class="w-2 h-2 rounded-full bg-gray-500 mr-2"></div> Moon Parameters</div>',
                 label_s_r: "Sun Radius",
@@ -182,6 +190,7 @@
             document.getElementById('guide_2').innerHTML = t.guide_2;
             document.getElementById('guide_3').innerHTML = t.guide_3;
             document.getElementById('guide_4').innerHTML = t.guide_4;
+            document.getElementById('copyright').innerText = t.copyright;
             document.getElementById('sunEarthHeader').innerHTML = t.sunEarthHeader;
             document.getElementById('moonHeader').innerHTML = t.moonHeader;
             document.getElementById('label_s_r').innerText = t.label_s_r;
@@ -200,7 +209,7 @@
             document.getElementById('btnFullMoon').innerText = t.btnFullMoon;
         }
 
-        // --- 以下維持原始 3D JavaScript 邏輯 ---
+        // --- 3D JavaScript 邏輯 ---
         const sunParams = { r: 25 };
         const earthParams = { a: 100, e: 0, i: 0, M: 0, speed: 0, r: 8 };
         const moonParams = { a: 18, e: 0, i: 30, M: 0, speed: 0, r: 3.8 };
@@ -407,5 +416,4 @@
         window.onload = animate;
     </script>
 </body>
-
 </html>
