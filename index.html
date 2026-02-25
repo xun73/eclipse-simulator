@@ -309,7 +309,7 @@
 
         const earthOrbitLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x3366cc, transparent: true, opacity: 0.8 }));
         scene.add(earthOrbitLine);
-        const moonOrbitLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x666666, transparent: true, opacity: 0.8 }));
+        const moonOrbitLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x666666, transparent: true, opacity: 1 }));
         scene.add(moonOrbitLine);
 
         function getOrbitalPosition(params, M_angle) {
@@ -417,3 +417,4 @@
     </script>
 </body>
 </html>
+
