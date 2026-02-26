@@ -8,7 +8,6 @@ This is a 3D astronomical educational tool built with Three.js, designed to help
 
 ## 🌐 線上演示 | Live Demo
 [👉 點擊這裡開啟模擬器 | Click here to open the Simulator](https://xun73.github.io/eclipse-simulator/)
-*(請記得將上面的網址替換成你實際的 GitHub Pages 連結)*
 
 ---
 
